@@ -1,0 +1,3 @@
+﻿<Project>
+  <Import Project="../build/bswisp-noc.props" />
+</Project>

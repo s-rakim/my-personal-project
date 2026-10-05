@@ -1,0 +1,25 @@
+{
+  "Files": [
+    {
+      "Id": "/home/user/my-personal-project/noc/wwwroot/index.html",
+      "PackagePath": "staticwebassets/index.html"
+    },
+    {
+      "Id": "obj/Debug/net8.0/staticwebassets/msbuild.bswisp-noc.Microsoft.AspNetCore.StaticWebAssets.props",
+      "PackagePath": "build\\Microsoft.AspNetCore.StaticWebAssets.props"
+    },
+    {
+      "Id": "obj/Debug/net8.0/staticwebassets/msbuild.build.bswisp-noc.props",
+      "PackagePath": "build\\bswisp-noc.props"
+    },
+    {
+      "Id": "obj/Debug/net8.0/staticwebassets/msbuild.buildMultiTargeting.bswisp-noc.props",
+      "PackagePath": "buildMultiTargeting\\bswisp-noc.props"
+    },
+    {
+      "Id": "obj/Debug/net8.0/staticwebassets/msbuild.buildTransitive.bswisp-noc.props",
+      "PackagePath": "buildTransitive\\bswisp-noc.props"
+    }
+  ],
+  "ElementsToRemove": []
+}

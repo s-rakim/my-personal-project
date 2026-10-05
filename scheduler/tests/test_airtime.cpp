@@ -393,6 +393,39 @@ void testRelayTrunkCapsSubtree() {
   }
 }
 
+// The relay flag has to survive serialisation. It did not once, and every
+// consumer downstream then counted the network's own plumbing as a customer.
+void testRelayFlagIsSerialised() {
+  CASE("is_relay survives the JSON round trip");
+  Problem p;
+  p.sites.push_back(makeSite("hub", 10000.0));
+
+  Site leaf = makeSite("leaf", 10000.0);
+  leaf.parentSiteId = "hub";
+  leaf.backhaulSectorId = "sec-hub";
+  leaf.relayAchievableMbps = 100.0;
+  p.sites.push_back(leaf);
+
+  p.sectors.push_back(makeSector("sec-hub", "hub", 1.0));
+  p.sectors.push_back(makeSector("sec-leaf", "leaf", 1.0));
+  p.terminals.push_back(makeTerminal("real-customer", "sec-leaf", 100.0, 50.0, 100.0));
+
+  const json::Value doc = json::parse(json::dump(AirtimeScheduler().Solve(p).toJson()));
+
+  int relays = 0;
+  int customers = 0;
+  for (const json::Value& a : doc["assignments"].items()) {
+    CHECK(a.has("is_relay"));
+    if (a["is_relay"].asBool()) {
+      ++relays;
+    } else {
+      ++customers;
+    }
+  }
+  CHECK(relays == 1);
+  CHECK(customers == 1);
+}
+
 void testRelayCompetesForParentAirtime() {
   CASE("a relay competes for the parent sector's airtime");
   Problem p;
@@ -569,6 +602,7 @@ int main() {
   testBackhaulCaps();
   testUnservedTerminalIsCounted();
   testRelayTrunkCapsSubtree();
+  testRelayFlagIsSerialised();
   testRelayCompetesForParentAirtime();
   testPinIsHonoured();
   testBackhaulCycleIsReported();

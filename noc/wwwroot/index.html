@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Network Operations</title>
+<style>
+  /* Colour roles, so light and dark swap in one place and the body is written
+     against roles rather than raw hex. */
+  :root {
+    color-scheme: light;
+    --plane:          #f9f9f7;
+    --surface:        #fcfcfb;
+    --ink:            #0b0b0b;
+    --ink-2:          #52514e;
+    --ink-muted:      #898781;
+    --hairline:       #e1e0d9;
+    --baseline:       #c3c2b7;
+    --ring:           rgba(11,11,11,0.10);
+
+    /* Status roles are fixed and never themed. They are deliberately distinct
+       from any series colour so a status can never impersonate a series. */
+    --good:     #0ca30c;
+    --warning:  #fab219;
+    --critical: #d03b3b;
+
+    /* Sequential blue, for magnitude in the meters. One hue, light to dark. */
+    --seq-200: #9ec5f4;
+    --seq-450: #2a78d6;
+    --seq-550: #1c5cab;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --plane:     #0d0d0d;
+      --surface:   #1a1a19;
+      --ink:       #ffffff;
+      --ink-2:     #c3c2b7;
+      --ink-muted: #898781;
+      --hairline:  #2c2c2a;
+      --baseline:  #383835;
+      --ring:      rgba(255,255,255,0.10);
+      --seq-200:   #184f95;
+      --seq-450:   #3987e5;
+      --seq-550:   #86b6ef;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --plane:     #0d0d0d;
+    --surface:   #1a1a19;
+    --ink:       #ffffff;
+    --ink-2:     #c3c2b7;
+    --ink-muted: #898781;
+    --hairline:  #2c2c2a;
+    --baseline:  #383835;
+    --ring:      rgba(255,255,255,0.10);
+    --seq-200:   #184f95;
+    --seq-450:   #3987e5;
+    --seq-550:   #86b6ef;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 24px 16px 64px;
+    background: var(--plane);
+    color: var(--ink);
+    font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 1160px; margin: 0 auto; }
+
+  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: baseline;
+           justify-content: space-between; margin-bottom: 20px; }
+  h1 { font-size: 20px; font-weight: 650; margin: 0; letter-spacing: -0.01em; }
+  .meta { color: var(--ink-muted); font-size: 13px;
+          font-variant-numeric: tabular-nums; }
+
+  /* Single headline numbers are stat tiles, not charts. A chart of one value is
+     a decoration. */
+  .tiles { display: grid; gap: 12px; margin-bottom: 24px;
+           grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+  .tile { background: var(--surface); border: 1px solid var(--ring);
+          border-radius: 10px; padding: 14px 16px; }
+  .tile .label { font-size: 12px; color: var(--ink-2); text-transform: uppercase;
+                 letter-spacing: 0.05em; font-weight: 600; }
+  .tile .value { font-size: 28px; font-weight: 640; margin-top: 6px;
+                 letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
+                 /* Values wear ink, never a status colour: the badge beside them
+                    carries the state. */
+                 color: var(--ink); }
+  .tile .sub { font-size: 12px; color: var(--ink-muted); margin-top: 2px;
+               font-variant-numeric: tabular-nums; }
+
+  section { background: var(--surface); border: 1px solid var(--ring);
+            border-radius: 10px; padding: 16px; margin-bottom: 20px; }
+  section > h2 { font-size: 13px; font-weight: 650; margin: 0 0 12px;
+                 text-transform: uppercase; letter-spacing: 0.05em;
+                 color: var(--ink-2); }
+
+  /* A status colour never carries meaning alone. Each severity ships a distinct
+     glyph and a word, because critical red and good green are only about 4 units
+     apart under deuteranopia and roughly one man in sixteen cannot separate them
+     by hue. */
+  .badge { display: inline-flex; align-items: center; gap: 6px; flex: none;
+           align-self: flex-start; white-space: nowrap;
+           font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
+           text-transform: uppercase; padding: 3px 8px; border-radius: 999px;
+           border: 1px solid currentColor; }
+  .badge .glyph { font-size: 12px; line-height: 1; }
+  .badge.good     { color: var(--good); }
+  .badge.warning  { color: #8a6000; }
+  .badge.critical { color: var(--critical); }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) .badge.warning { color: var(--warning); }
+  }
+  :root[data-theme="dark"] .badge.warning { color: var(--warning); }
+
+  .alert { display: flex; gap: 12px; padding: 12px 0;
+           border-top: 1px solid var(--hairline); }
+  .alert:first-of-type { border-top: 0; }
+  .alert .body { min-width: 0; }
+  .alert .title { font-weight: 620; }
+  .alert .subject { font-size: 12px; color: var(--ink-muted);
+                    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .alert .detail { color: var(--ink-2); font-size: 14px; margin-top: 3px; }
+  .alert .action { font-size: 13px; margin-top: 5px; color: var(--ink-2);
+                   padding-left: 10px; border-left: 2px solid var(--baseline); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; font-size: 11px; font-weight: 650; color: var(--ink-muted);
+       text-transform: uppercase; letter-spacing: 0.05em; padding: 0 10px 8px 0;
+       border-bottom: 1px solid var(--baseline); white-space: nowrap; }
+  td { padding: 9px 10px 9px 0; border-bottom: 1px solid var(--hairline);
+       font-variant-numeric: tabular-nums; }
+  tr:last-child td { border-bottom: 0; }
+  td.id { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+  td.num { text-align: right; }
+
+  /* Thin, baseline-anchored, with a 4px rounded data-end and a 2px surface gap
+     from the track. The numeric label is always present: the warning step sits
+     below 3:1 on the light surface, so the number carries the value and the
+     colour only reinforces it. */
+  .meter { display: flex; align-items: center; gap: 10px; min-width: 150px; }
+  .meter .track { position: relative; flex: 1; height: 8px; border-radius: 4px;
+                  background: var(--hairline); overflow: hidden; }
+  .meter .fill { position: absolute; inset: 0 auto 0 0; border-radius: 0 4px 4px 0;
+                 background: var(--seq-450);
+                 box-shadow: 0 0 0 2px var(--surface) inset; }
+  .meter .fill.hot  { background: var(--warning); }
+  .meter .fill.over { background: var(--critical); }
+  .meter .pct { font-size: 13px; color: var(--ink-2); min-width: 44px;
+                text-align: right; font-variant-numeric: tabular-nums; }
+
+  .empty { color: var(--ink-muted); font-size: 14px; padding: 6px 0; }
+  .limited { font-size: 12px; color: var(--ink-muted); }
+
+  /* Hover is the default on an HTML view: every meter and row explains itself
+     without a round trip to the API. */
+  [title] { cursor: help; }
+
+  button#theme { background: var(--surface); color: var(--ink-2);
+                 border: 1px solid var(--ring); border-radius: 8px;
+                 padding: 5px 10px; font-size: 12px; cursor: pointer; }
+
+  @media (max-width: 620px) {
+    .scroll { overflow-x: auto; }
+    table { min-width: 560px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <h1>Network Operations</h1>
+      <div class="meta" id="meta">connecting…</div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <span id="overall"></span>
+      <button id="theme" type="button">Theme</button>
+    </div>
+  </header>
+
+  <div class="tiles" id="tiles"></div>
+
+  <section>
+    <h2>What needs attention</h2>
+    <div id="alerts"><div class="empty">loading…</div></div>
+  </section>
+
+  <section>
+    <h2>Sectors</h2>
+    <div class="scroll"><table>
+      <thead><tr>
+        <th>Sector</th><th>Terminals</th><th>Downlink airtime</th>
+        <th class="num">Offered</th><th class="num">Granted</th><th>State</th>
+      </tr></thead>
+      <tbody id="sectors"></tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>Site trunks</h2>
+    <div class="scroll"><table>
+      <thead><tr>
+        <th>Site</th><th>Relay hops</th><th>Utilisation</th>
+        <th class="num">Offered</th><th class="num">Capacity</th><th>State</th>
+      </tr></thead>
+      <tbody id="backhaul"></tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>Subscribers</h2>
+    <div class="scroll"><table>
+      <thead><tr>
+        <th>Terminal</th><th>Sector</th><th class="num">Granted</th>
+        <th class="num">SINR</th><th>Modulation</th><th>Limited by</th><th>Committed</th>
+      </tr></thead>
+      <tbody id="subs"></tbody>
+    </table></div>
+  </section>
+
+</div>
+
+<script>
+// Severity carries a glyph and a word as well as a colour. The colour alone is
+// not sufficient: critical and good are nearly indistinguishable under the most
+// common form of colour blindness.
+const SEVERITY = {
+  good:     { glyph: '●', word: 'OK' },
+  info:     { glyph: '○', word: 'Info' },
+  warning:  { glyph: '▲', word: 'Warning' },
+  critical: { glyph: '■', word: 'Critical' },
+};
+
+const el = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g,
+  (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmt = (n, d = 1) => Number(n ?? 0).toFixed(d);
+
+function badge(severity) {
+  const s = SEVERITY[severity] ?? SEVERITY.info;
+  return `<span class="badge ${esc(severity)}"><span class="glyph" aria-hidden="true">${s.glyph}</span>${s.word}</span>`;
+}
+
+// Threshold colour steps the fill; the number beside it always states the value.
+function meter(fraction, label, tooltip) {
+  const pct = Math.max(0, Math.min(1, Number(fraction) || 0));
+  const cls = pct >= 1 ? 'over' : pct >= 0.9 ? 'hot' : '';
+  return `<div class="meter" title="${esc(tooltip)}">
+    <div class="track"><div class="fill ${cls}" style="width:${(pct * 100).toFixed(1)}%"></div></div>
+    <span class="pct">${esc(label)}</span></div>`;
+}
+
+function tile(label, value, sub) {
+  return `<div class="tile"><div class="label">${esc(label)}</div>
+    <div class="value">${esc(value)}</div>
+    <div class="sub">${esc(sub ?? '')}</div></div>`;
+}
+
+function render(data) {
+  const plan = data.plan ?? {};
+  const obj = plan.objective ?? {};
+  const status = data.status ?? {};
+  const sched = status.scheduler ?? {};
+  const ipam = status.ipam ?? {};
+  const subscribers = (plan.assignments ?? []).filter((a) => !a.is_relay);
+
+  el('meta').textContent =
+    `${status.node_id || 'unknown node'} · epoch ${sched.epoch ?? '—'} · `
+    + `solver ${plan.solve_micros ?? 0}µs · ${data.controlPlaneUrl} · `
+    + `refreshed ${new Date(data.generatedAt).toLocaleTimeString()}`;
+  el('overall').innerHTML = badge(data.worstSeverity);
+
+  const v4 = ipam.v4_capacity ? ipam.v4_used / ipam.v4_capacity : 0;
+  el('tiles').innerHTML = [
+    tile('Online', status.sessions_online ?? 0,
+         `${status.sessions_total ?? 0} known`),
+    tile('Granted', `${fmt(obj.granted_down_mbps, 0)} Mbps`,
+         `of ${fmt(obj.offered_down_mbps, 0)} Mbps offered`),
+    tile('Committed shortfall', `${fmt(obj.committed_shortfall_mbps, 1)} Mbps`,
+         obj.committed_shortfall_mbps > 0.01 ? 'contract breach' : 'all commitments met'),
+    tile('Unserved', obj.unserved_terminals ?? 0,
+         'terminals with no sector'),
+    tile('Handoffs', (plan.handoffs ?? []).length, 'this tick'),
+    tile('Address pool', `${fmt(v4 * 100, 0)}%`,
+         `${ipam.v4_used ?? 0} of ${ipam.v4_capacity ?? 0}`),
+  ].join('');
+
+  const alerts = data.alerts ?? [];
+  el('alerts').innerHTML = alerts.length === 0
+    ? `<div class="empty">Nothing to act on. All commitments met, no sector or trunk near its limit.</div>`
+    : alerts.map((a) => `<div class="alert">${badge(a.severity)}
+        <div class="body">
+          <div class="title">${esc(a.title)}</div>
+          <div class="subject">${esc(a.subject)}</div>
+          <div class="detail">${esc(a.detail)}</div>
+          <div class="action">${esc(a.action)}</div>
+        </div></div>`).join('');
+
+  el('sectors').innerHTML = (plan.sectors ?? []).map((s) => {
+    // The report carries the whole-sector budget; the downlink gets its share.
+    const used = s.airtime_used_down ?? 0;
+    const total = used + (s.airtime_used_up ?? 0);
+    const budget = total > 0 ? (s.airtime_budget ?? 0) * (used / total) : (s.airtime_budget ?? 0);
+    const frac = budget > 0 ? used / budget : 0;
+    return `<tr>
+      <td class="id">${esc(s.sector_id)}</td>
+      <td class="num">${s.terminals ?? 0}</td>
+      <td>${meter(frac, `${fmt(frac * 100, 0)}%`,
+            `${fmt(used, 4)} of ${fmt(budget, 4)} seconds per second used downstream`)}</td>
+      <td class="num">${fmt(s.offered_down_mbps, 0)}</td>
+      <td class="num">${fmt(s.granted_down_mbps, 0)}</td>
+      <td title="${s.oversubscribed
+            ? 'Committed rates exceed this sector\u2019s airtime budget. That holds regardless of current load: if every committed subscriber asked at once, the sector could not serve them.'
+            : frac >= 0.9 ? 'Airtime is nearly exhausted at the current load.'
+            : 'Airtime and commitments both fit.'}">${badge(
+          s.oversubscribed ? 'critical' : frac >= 0.9 ? 'warning' : 'good')}</td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="6" class="empty">no sectors reported</td></tr>`;
+
+  el('backhaul').innerHTML = (plan.backhaul ?? []).map((b) => `<tr>
+      <td class="id">${esc(b.site_id)}</td>
+      <td class="num">${b.relay_depth ?? 0}</td>
+      <td>${meter(b.utilization, `${fmt((b.utilization ?? 0) * 100, 0)}%`,
+            `${fmt(b.offered_mbps, 1)} of ${fmt(b.capacity_mbps, 1)} Mbps`)}</td>
+      <td class="num">${fmt(b.offered_mbps, 0)}</td>
+      <td class="num">${fmt(b.capacity_mbps, 0)}</td>
+      <td>${badge(b.congested ? 'critical' : (b.utilization ?? 0) >= 0.85 ? 'warning' : 'good')}</td>
+    </tr>`).join('') || `<tr><td colspan="6" class="empty">no sites reported</td></tr>`;
+
+  el('subs').innerHTML = subscribers.map((a) => `<tr>
+      <td class="id">${esc(a.terminal_id)}</td>
+      <td class="id">${esc(a.sector_id)}</td>
+      <td class="num">${fmt(a.grant_down_mbps, 1)}</td>
+      <td class="num">${fmt(a.sinr_db, 1)}</td>
+      <td>${esc(a.mcs || '—')}</td>
+      <td class="limited" title="Why this grant is not larger">${esc(a.limited_by)}</td>
+      <td>${badge(a.committed_met ? 'good' : 'critical')}</td>
+    </tr>`).join('') || `<tr><td colspan="7" class="empty">no subscribers online</td></tr>`;
+}
+
+async function refresh() {
+  try {
+    const response = await fetch('/api/overview', { cache: 'no-store' });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    render(await response.json());
+  } catch (e) {
+    // The NOC's own page must not go blank when the thing it watches goes down.
+    el('overall').innerHTML = badge('critical');
+    el('meta').textContent = `cannot reach the NOC API: ${e.message}`;
+  }
+}
+
+el('theme').addEventListener('click', () => {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark');
+});
+
+refresh();
+setInterval(refresh, 5000);
+</script>
+</body>
+</html>

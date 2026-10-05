@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>bswisp-noc</AssemblyName>
+    <RootNamespace>Bswisp.Noc</RootNamespace>
+    <!-- Warnings are errors. A NOC console that silently mis-parses a plan shows
+         an operator a calm dashboard during an outage, which is worse than no
+         dashboard. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <!-- No PackageReference entries. The ASP.NET Core shared framework has
+       everything needed, including System.Text.Json, so the project restores
+       offline. -->
+
+</Project>

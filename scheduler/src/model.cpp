@@ -105,6 +105,9 @@ json::Value Plan::toJson() const {
     v.set("mcs", json::Value(a.mcs));
     v.set("committed_met", json::Value(a.committedMet));
     v.set("limited_by", json::Value(std::string(limitedByName(a.limitedBy))));
+    // Without this a relay is indistinguishable from a subscriber downstream,
+    // and every consumer counts the network's own plumbing as a customer.
+    v.set("is_relay", json::Value(a.isRelay));
     as.push(std::move(v));
   }
   out.set("assignments", std::move(as));
