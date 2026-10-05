@@ -13,8 +13,8 @@ export DOTNET_CLI_TELEMETRY_OPTOUT := 1
 export DOTNET_NOLOGO := 1
 
 .PHONY: all build test clean run seed demo stop \
-        scheduler controlplane planning oss noc \
-        test-scheduler test-controlplane test-planning test-oss test-noc conformance \
+        scheduler controlplane planning oss noc mobile \
+        test-scheduler test-controlplane test-planning test-oss test-noc test-mobile conformance \
         fmt vet help
 
 all: build
@@ -31,9 +31,9 @@ help:
 	@echo "  make clean       remove build output (leaves var/ alone)"
 	@echo
 	@echo "  Components: scheduler (C++), controlplane (Go), planning (Python),"
-	@echo "              oss (Java), noc (C#)"
+	@echo "              oss (Java), noc (C#), mobile (Go)"
 
-build: scheduler controlplane oss noc
+build: scheduler controlplane oss noc mobile
 	@echo "all components built"
 
 # ---- C++ airtime solver ----------------------------------------------------
@@ -90,6 +90,17 @@ noc:
 test-noc: noc
 	$(DOTNET) run --project noc/BswispNoc.csproj --no-build -- --self-test
 
+# ---- Go multi-link manager (vehicle / remote site) ----
+
+mobile: $(BIN)/mobilelinkd
+
+$(BIN)/mobilelinkd: $(shell find mobile -name '*.go' 2>/dev/null)
+	@mkdir -p $(BIN)
+	cd mobile && go build -o ../$(BIN)/mobilelinkd ./cmd/mobilelinkd
+
+test-mobile:
+	cd mobile && go vet ./... && go test ./...
+
 # ---- everything ------------------------------------------------------------
 
 # The conformance target is the one that catches cross-language drift: both the
@@ -100,7 +111,7 @@ conformance:
 	cd controlplane && go test ./internal/radio/ -run Conformance -v 2>&1 | tail -5
 	cd planning && python3 -m unittest tests.test_conformance -q
 
-test: test-scheduler test-controlplane test-planning test-oss test-noc conformance
+test: test-scheduler test-controlplane test-planning test-oss test-noc test-mobile conformance
 	@echo
 	@echo "all suites passed"
 
@@ -129,6 +140,6 @@ stop:
 	@./deploy/demo.sh stop
 
 clean:
-	rm -rf scheduler/build $(BIN) oss/build noc/bin noc/obj
+	rm -rf scheduler/build $(BIN) oss/build noc/bin noc/obj mobile/var
 	find . -name '__pycache__' -type d -prune -exec rm -rf {} + 2>/dev/null || true
 	@echo "cleaned (var/ left alone; remove it by hand to reset the network)"
