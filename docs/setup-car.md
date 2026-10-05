@@ -14,7 +14,49 @@ devices ──wifi──▶ Mango ──5G──▶ carrier ──internet──
 
 ---
 
+## Choose your tunnel first
+
+Two ways to do this, and they change the rest of the document.
+
+| | WireGuard | Tailscale |
+|---|---|---|
+| NAT traversal | you arrange it | automatic |
+| Behind CGNAT | needs a public IP or a VPS | just works |
+| Port forwarding | UDP 51820 | none |
+| Dynamic DNS | required | none |
+| Runs on the Mango | **yes** (kernel module, tiny) | **no** (see below) |
+| Setup effort | an evening | twenty minutes |
+
+**Tailscale is the better choice if you have somewhere to run it.** It is
+WireGuard underneath with the hard part — getting two machines behind NAT to find
+each other — done for you. Skip to the Tailscale section.
+
+### The Mango cannot run Tailscale
+
+GL.iNet lists the GL-MT300N-V2 as an unsupported model. Tailscale's MIPS build
+is two binaries totalling about 24 MB and the Mango has 16 MB of NOR flash, so it
+does not fit. People have run it from USB storage, but that is unofficial, does
+not survive a reboot cleanly, and **the Mango has one USB port that you need for
+the phone tether.** You cannot have both.
+
+So pick one of these:
+
+| Option | What it costs | What you get |
+|---|---|---|
+| Tailscale on a Raspberry Pi in the car, Mango does Wi-Fi only | a Pi you may already want for `cached` | clean, fast, no CGNAT worries |
+| Replace the Mango with a Beryl AX (GL-MT3000) | ~$110 | Tailscale supported, ~200 Mbps encrypted |
+| Keep the Mango, use plain WireGuard | nothing | works, but you handle NAT yourself |
+
+The first is the best value if you were going to run the content cache anyway,
+since the same Pi does both jobs.
+
+---
+
 ## Step 0 — find out whether you are behind CGNAT
+
+**Skip this entirely if you are using Tailscale.** Its whole point is that the
+answer stops mattering.
+
 
 Do this first. It decides which of two setups you need, and finding out later
 means redoing the work.
@@ -130,6 +172,77 @@ location become yours. A $5 box with a gigabit port is plenty for one person.
 
 ---
 
+## Tailscale path
+
+### At home
+
+On whatever is always on — the router, a Pi, a NAS:
+
+```sh
+curl -fsSL https://tailscale.com/install.sh | sh
+
+# Forwarding has to be on, or the exit node accepts traffic and drops it.
+printf 'net.ipv4.ip_forward = 1\nnet.ipv6.conf.all.forwarding = 1\n' \
+  | sudo tee /etc/sysctl.d/99-tailscale.conf
+sudo sysctl -p /etc/sysctl.d/99-tailscale.conf
+
+sudo tailscale up --advertise-exit-node
+```
+
+Then **approve it in the admin console**: Machines → your home node → Edit route
+settings → *Use as exit node*. Advertising is only an offer; without approval the
+car will connect and route nothing, which looks exactly like a broken tunnel.
+
+### In the car, on the Pi
+
+```sh
+curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up --exit-node=<home-hostname> --exit-node-allow-lan-access
+```
+
+`--exit-node-allow-lan-access` keeps the Pi reachable from the car's own network
+while everything else goes home. Without it you lose the ability to administer
+the thing you are sitting next to.
+
+### Share it to the rest of the car
+
+The Pi now has a tunnel; the Mango's clients need to use it. On the Pi:
+
+```sh
+sudo sysctl -w net.ipv4.ip_forward=1
+sudo iptables -t nat -A POSTROUTING -o tailscale0 -j MASQUERADE
+sudo iptables -A FORWARD -i eth0 -o tailscale0 -j ACCEPT
+sudo iptables -A FORWARD -i tailscale0 -o eth0 \
+  -m state --state RELATED,ESTABLISHED -j ACCEPT
+```
+
+Persist those with `iptables-persistent`, or they vanish at the next reboot.
+
+Then on the Mango, point the default gateway at the Pi's address. The Mango keeps
+doing what it is good at — Wi-Fi, DHCP, the USB tether — and the Pi carries the
+tunnel.
+
+### Check it
+
+From a device on the Mango's Wi-Fi:
+
+```sh
+curl ifconfig.me          # should print your home IP
+tailscale status          # on the Pi: shows the peer and whether it is direct
+```
+
+`tailscale status` is worth reading carefully. If it says **`relay`** rather than
+a direct connection, traffic is going through Tailscale's DERP servers: it works,
+but it is slower and adds latency. `tailscale netcheck` will say why.
+
+### What differs from WireGuard
+
+No port forward. No dynamic DNS. No CGNAT workaround. In exchange you depend on
+Tailscale's coordination service to broker connections, and you accept a little
+more overhead per packet. For this use that is a good trade.
+
+---
+
 ## Step 2 — WireGuard client on the Mango
 
 The config the car needs:
@@ -197,14 +310,29 @@ non-zero transfer counters in each direction.
 | Works at home, not on cellular | You are behind CGNAT; see Step 1b |
 | Everything resolves to nothing | `DNS` not set on the client interface |
 
+Tailscale has its own short list:
+
+| Symptom | Usual cause |
+|---|---|
+| Peers connect, nothing routes | Exit node advertised but never approved in the admin console |
+| Slow, high latency | `tailscale status` says `relay`; NAT traversal failed, traffic is going via DERP |
+| Exit node works, car LAN does not | Forwarding or the NAT rule missing on the Pi |
+| Cannot reach the Pi once connected | `--exit-node-allow-lan-access` not set |
+
 ---
 
 ## Step 5 — expectations
 
-**About 20 Mbps.** That is the Mango's 580 MHz MIPS processor doing encryption
-without hardware acceleration — not your 5G link and not your fibre. Fine for
-maps, browsing, music and video calls. A Beryl AX (~$110) does roughly 200 Mbps
-if you need more.
+Whatever carries the tunnel sets the ceiling, and it is rarely the link:
+
+| Carrying the tunnel | Roughly |
+|---|---|
+| Mango, WireGuard | 20 Mbps — 580 MHz MIPS, no crypto acceleration |
+| Raspberry Pi 4 or 5, Tailscale | 200–400 Mbps; cellular becomes the limit again |
+| Beryl AX, either | ~200 Mbps |
+
+Twenty megabits is fine for maps, browsing, music and video calls. It is the
+Mango's processor, not your 5G and not your fibre.
 
 And the thing worth being clear about: the tunnel gives you your home
 connection's *identity*, not its *bandwidth*, and not free data. Cellular carries
@@ -246,6 +374,10 @@ own, so cellular only ever carries what genuinely has to happen now. See
 | A phone you already own, tethered | — |
 | WireGuard on existing home hardware | — |
 | **Total to find out if this is worth it** | **nothing** |
+
+For the Tailscale version, add a Raspberry Pi. If you were going to run `cached`
+in the car anyway, that Pi does both jobs and the tunnel stops being the
+bottleneck.
 
 Build that first. Everything above it is optional and the cheap version answers
 the only question that matters, which is whether 20 Mbps of your home connection
