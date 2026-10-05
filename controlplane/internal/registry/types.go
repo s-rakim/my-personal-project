@@ -30,6 +30,26 @@ const (
 	// sharing airtime with that parent's subscribers. The most fragile option
 	// and the one worth monitoring hardest.
 	BackhaulRelay BackhaulKind = "relay"
+
+	// BackhaulCellular reaches the internet over a carrier's LTE or 5G network
+	// through a SIM modem. It is the fastest way to light up a site with no
+	// fibre anywhere near it, and it behaves unlike every other option here:
+	//
+	//   - Capacity is whatever the carrier's sector gives you this minute. You
+	//     are a subscriber on someone else's oversubscribed tower, so configure
+	//     BackhaulMbps at the rate it sustains at 8pm, not at noon.
+	//   - It is usually metered. Set MonthlyCapGB and watch it, or the month
+	//     ends with a throttle you did not plan for.
+	//   - You sit behind the carrier's own CGNAT, so nothing inbound works and
+	//     you cannot announce your own addresses over it. Fine for best-effort
+	//     service; useless as the path for anything needing a static address.
+	//   - Latency is higher and more variable than a microwave link of the same
+	//     throughput.
+	//
+	// Reasonable as a first uplink or as failover. Reasonable as the permanent
+	// trunk for a growing subscriber base only if the economics have been
+	// checked, since you are reselling capacity you rent by the gigabyte.
+	BackhaulCellular BackhaulKind = "cellular"
 )
 
 // PlanTier is a service plan. The distinction between Down/Up and Committed is
@@ -91,6 +111,11 @@ type Site struct {
 	BackhaulKind BackhaulKind `json:"backhaul_kind"`
 	BackhaulMbps float64      `json:"backhaul_mbps"`
 
+	// MonthlyCapGB is the metered allowance on this site's uplink, used by
+	// BackhaulCellular. Zero means unmetered. The scheduler does not enforce it;
+	// it is reported so the overage is a decision rather than a surprise.
+	MonthlyCapGB float64 `json:"monthly_cap_gb,omitempty"`
+
 	// BackhaulSectorID is the parent's sector carrying this relay, set only for
 	// BackhaulRelay. The relay's traffic is charged against that sector's
 	// airtime, so it competes with real subscribers there.
@@ -127,6 +152,14 @@ type Sector struct {
 	// scan. In unlicensed bands this is usually what caps the sector, so
 	// re-scan after any neighbour lights up new gear.
 	InterferenceDBm float64 `json:"interference_dbm"`
+
+	// NoiseFigureDB is this radio's own receiver noise, used for the uplink
+	// budget where the sector is the receiver.
+	NoiseFigureDB float64 `json:"noise_figure_db"`
+
+	// DLULSplit is the share of airtime given to the downlink. Time-division
+	// gear shares one pool; set 1.0 for frequency-division gear.
+	DLULSplit float64 `json:"dl_ul_split"`
 
 	// AirtimeBudget is the usable fraction of a second, after management
 	// traffic and a deliberate headroom reserve. Scheduling to 1.0 means
@@ -185,6 +218,11 @@ type Terminal struct {
 	AntennaGainDBi float64     `json:"antenna_gain_dbi"`
 	NoiseFigureDB  float64     `json:"noise_figure_db"`
 	FeederLossDB   float64     `json:"feeder_loss_db"`
+
+	// TxPowerDBm is the CPE's conducted transmit power, for the uplink budget.
+	// It is normally well below the tower's, which is why uplink is the
+	// direction that fails first on a long link.
+	TxPowerDBm float64 `json:"tx_power_dbm"`
 
 	// TokenHash authenticates the terminal to the control-plane API.
 	TokenHash string `json:"token_hash"`

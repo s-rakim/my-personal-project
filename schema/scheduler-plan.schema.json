@@ -4,47 +4,115 @@
   "title": "SchedulerPlan",
   "description": "The solver's answer: who talks to which sector, and how much airtime each one gets. Also every reason the answer is worse than the operator would like, because an allocator that silently degrades service is an allocator nobody can run a network on.",
   "type": "object",
-  "required": ["epoch", "solver", "assignments", "sectors"],
+  "required": [
+    "epoch",
+    "solver",
+    "assignments",
+    "sectors"
+  ],
   "additionalProperties": false,
   "properties": {
-    "epoch": { "type": "integer", "minimum": 0 },
-    "solver": { "type": "string", "description": "Implementation and version, so a plan can be traced to the code that produced it." },
-    "solve_micros": { "type": "integer", "minimum": 0 },
+    "epoch": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "solver": {
+      "type": "string",
+      "description": "Implementation and version, so a plan can be traced to the code that produced it."
+    },
+    "solve_micros": {
+      "type": "integer",
+      "minimum": 0
+    },
     "objective": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "offered_down_mbps": { "type": "number" },
-        "granted_down_mbps": { "type": "number" },
-        "offered_up_mbps": { "type": "number" },
-        "granted_up_mbps": { "type": "number" },
+        "offered_down_mbps": {
+          "type": "number"
+        },
+        "granted_down_mbps": {
+          "type": "number"
+        },
+        "offered_up_mbps": {
+          "type": "number"
+        },
+        "granted_up_mbps": {
+          "type": "number"
+        },
         "committed_shortfall_mbps": {
           "type": "number",
           "description": "Total committed rate the network could not deliver. Anything above zero is a breach of what was sold and belongs on a dashboard, not in a log."
         },
-        "unserved_terminals": { "type": "integer", "minimum": 0 }
+        "unserved_terminals": {
+          "type": "integer",
+          "minimum": 0
+        }
       }
     },
     "assignments": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["terminal_id", "sector_id", "airtime_down", "airtime_up", "grant_down_mbps", "grant_up_mbps"],
+        "required": [
+          "terminal_id",
+          "sector_id",
+          "airtime_down",
+          "airtime_up",
+          "grant_down_mbps",
+          "grant_up_mbps"
+        ],
         "additionalProperties": false,
         "properties": {
-          "terminal_id": { "type": "string" },
-          "sector_id": { "type": "string" },
-          "airtime_down": { "type": "number", "minimum": 0, "maximum": 1 },
-          "airtime_up": { "type": "number", "minimum": 0, "maximum": 1 },
-          "grant_down_mbps": { "type": "number", "minimum": 0, "description": "What the data plane should shape this subscriber to until the next tick." },
-          "grant_up_mbps": { "type": "number", "minimum": 0 },
-          "sinr_db": { "type": "number" },
-          "mcs": { "type": "string" },
-          "committed_met": { "type": "boolean" },
+          "terminal_id": {
+            "type": "string"
+          },
+          "sector_id": {
+            "type": "string"
+          },
+          "airtime_down": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "airtime_up": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "grant_down_mbps": {
+            "type": "number",
+            "minimum": 0,
+            "description": "What the data plane should shape this subscriber to until the next tick."
+          },
+          "grant_up_mbps": {
+            "type": "number",
+            "minimum": 0
+          },
+          "sinr_db": {
+            "type": "number"
+          },
+          "mcs": {
+            "type": "string"
+          },
+          "committed_met": {
+            "type": "boolean"
+          },
           "limited_by": {
             "type": "string",
-            "enum": ["demand", "ceiling", "airtime", "backhaul", "none"],
+            "enum": [
+              "demand",
+              "ceiling",
+              "airtime",
+              "backhaul",
+              "none"
+            ],
             "description": "Why this grant is not larger. The single most useful field for answering 'why is my internet slow' without a packet capture."
+          },
+          "is_relay": {
+            "type": "boolean",
+            "default": false,
+            "description": "True for a synthetic terminal standing in for a child site's trunk. Relays are infrastructure, not subscribers, and must be excluded from customer-facing totals."
           }
         }
       }
@@ -53,14 +121,36 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["terminal_id", "to_sector_id", "reason"],
+        "required": [
+          "terminal_id",
+          "to_sector_id",
+          "reason"
+        ],
         "additionalProperties": false,
         "properties": {
-          "terminal_id": { "type": "string" },
-          "from_sector_id": { "type": "string" },
-          "to_sector_id": { "type": "string" },
-          "reason": { "type": "string", "enum": ["initial", "better_rate", "congestion", "pinned", "link_lost"] },
-          "gain": { "type": "number", "description": "Score ratio that justified the move. Audit this when terminals flap." }
+          "terminal_id": {
+            "type": "string"
+          },
+          "from_sector_id": {
+            "type": "string"
+          },
+          "to_sector_id": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "initial",
+              "better_rate",
+              "congestion",
+              "pinned",
+              "link_lost"
+            ]
+          },
+          "gain": {
+            "type": "number",
+            "description": "Score ratio that justified the move. Audit this when terminals flap."
+          }
         }
       }
     },
@@ -68,16 +158,37 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["sector_id", "airtime_used_down", "terminals"],
+        "required": [
+          "sector_id",
+          "airtime_used_down",
+          "terminals"
+        ],
         "additionalProperties": false,
         "properties": {
-          "sector_id": { "type": "string" },
-          "airtime_used_down": { "type": "number", "minimum": 0 },
-          "airtime_used_up": { "type": "number", "minimum": 0 },
-          "airtime_budget": { "type": "number" },
-          "terminals": { "type": "integer", "minimum": 0 },
-          "offered_down_mbps": { "type": "number" },
-          "granted_down_mbps": { "type": "number" },
+          "sector_id": {
+            "type": "string"
+          },
+          "airtime_used_down": {
+            "type": "number",
+            "minimum": 0
+          },
+          "airtime_used_up": {
+            "type": "number",
+            "minimum": 0
+          },
+          "airtime_budget": {
+            "type": "number"
+          },
+          "terminals": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "offered_down_mbps": {
+            "type": "number"
+          },
+          "granted_down_mbps": {
+            "type": "number"
+          },
           "oversubscribed": {
             "type": "boolean",
             "description": "True when committed rates alone exceeded the airtime budget. This sector needs another channel, a narrower beam, or fewer subscribers; it cannot be fixed in software."
@@ -89,21 +200,42 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["site_id", "offered_mbps", "capacity_mbps"],
+        "required": [
+          "site_id",
+          "offered_mbps",
+          "capacity_mbps"
+        ],
         "additionalProperties": false,
         "properties": {
-          "site_id": { "type": "string" },
-          "offered_mbps": { "type": "number", "description": "This site's own traffic plus everything relayed through it." },
-          "capacity_mbps": { "type": "number" },
-          "utilization": { "type": "number" },
-          "congested": { "type": "boolean" },
-          "relay_depth": { "type": "integer", "minimum": 0, "description": "Hops to the PoP. Latency and fragility both grow with it." }
+          "site_id": {
+            "type": "string"
+          },
+          "offered_mbps": {
+            "type": "number",
+            "description": "This site's own traffic plus everything relayed through it."
+          },
+          "capacity_mbps": {
+            "type": "number"
+          },
+          "utilization": {
+            "type": "number"
+          },
+          "congested": {
+            "type": "boolean"
+          },
+          "relay_depth": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Hops to the PoP. Latency and fragility both grow with it."
+          }
         }
       }
     },
     "warnings": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "Human-readable problems found while solving: cycles, missing references, pins that cost a subscriber their committed rate."
     }
   }

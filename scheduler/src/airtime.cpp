@@ -282,8 +282,13 @@ void allocateDirection(SectorState& st, const std::vector<Terminal>& terms,
       limited = LimitedBy::Airtime;
     }
 
+    // A commitment is only breached when the subscriber wanted it and did not
+    // get it. Someone idling at 2 Mbps on a 50 Mbps committed rate is not being
+    // short-changed, and counting them as a breach would leave the shortfall
+    // metric permanently non-zero -- which makes the one number that should mean
+    // "we are failing a contract" mean nothing at all.
     const double committed = committedOf(i);
-    const bool met = committed <= 0 || grant >= committed - kRateEpsilon;
+    const bool met = committed <= 0 || grant >= std::min(committed, target) - kRateEpsilon;
 
     if (down) {
       ts[i].airtimeDown = air;
@@ -773,8 +778,12 @@ Plan AirtimeScheduler::Solve(const Problem& problem) const {
     plan.objective.grantedDownMbps += ts[i].grantDown;
     plan.objective.offeredUpMbps += effectiveWant(terms[i].demandUpMbps, terms[i].ceilingUpMbps);
     plan.objective.grantedUpMbps += ts[i].grantUp;
-    if (terms[i].committedDownMbps > ts[i].grantDown + kRateEpsilon) {
-      plan.objective.committedShortfallMbps += terms[i].committedDownMbps - ts[i].grantDown;
+    // Measured the same way as committedMet above, so the per-terminal flag and
+    // the network-wide figure can never disagree.
+    const double owed = std::min(terms[i].committedDownMbps,
+                                 effectiveWant(terms[i].demandDownMbps, terms[i].ceilingDownMbps));
+    if (owed > ts[i].grantDown + kRateEpsilon) {
+      plan.objective.committedShortfallMbps += owed - ts[i].grantDown;
     }
   }
   std::sort(plan.assignments.begin(), plan.assignments.end(),

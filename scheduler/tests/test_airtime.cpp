@@ -183,6 +183,50 @@ void testCommittedRatesReservedFirst() {
   CHECK_NEAR(plan.objective.committedShortfallMbps, 0.0, 1e-6);
 }
 
+// A subscriber idling well below their committed rate is not a breach of it.
+// Without this distinction the shortfall metric is non-zero on every healthy
+// network and stops meaning anything.
+void testIdleSubscriberIsNotABreach() {
+  CASE("a subscriber demanding less than their commitment is not a breach");
+  Problem p;
+  p.sites.push_back(makeSite("site-1"));
+  p.sectors.push_back(makeSector("sec-1", "site-1", 1.0));
+  // Committed 50 Mbps, but only asking for 2.
+  p.terminals.push_back(makeTerminal("idle", "sec-1", 200.0, 2.0, 100.0, 50.0));
+
+  const Plan plan = AirtimeScheduler().Solve(p);
+  const Assignment* a = find(plan, "idle");
+  CHECK(a != nullptr);
+  if (a != nullptr) {
+    CHECK_NEAR(a->grantDownMbps, 2.0, 1e-6);
+    CHECK(a->committedMet);
+    CHECK(a->limitedBy == LimitedBy::Demand);
+  }
+  CHECK_NEAR(plan.objective.committedShortfallMbps, 0.0, 1e-6);
+}
+
+// The converse: wanting the committed rate and not getting it IS a breach, and
+// the per-terminal flag and the network total must agree about it.
+void testRealBreachIsCountedConsistently() {
+  CASE("a real commitment breach is reported by both the flag and the total");
+  Problem p;
+  p.sites.push_back(makeSite("site-1"));
+  p.sectors.push_back(makeSector("sec-1", "site-1", 0.5));
+  // Each wants its full 20 Mbps commitment, but 0.5 airtime at 20 Mbps
+  // achievable cannot deliver 40 Mbps between them.
+  p.terminals.push_back(makeTerminal("a", "sec-1", 20.0, 20.0, 20.0, 20.0));
+  p.terminals.push_back(makeTerminal("b", "sec-1", 20.0, 20.0, 20.0, 20.0));
+
+  const Plan plan = AirtimeScheduler().Solve(p);
+  CHECK(plan.objective.committedShortfallMbps > 0.0);
+
+  double flagged = 0;
+  for (const Assignment& a : plan.assignments) {
+    if (!a.committedMet) ++flagged;
+  }
+  CHECK(flagged > 0);
+}
+
 void testOversubscriptionIsReported() {
   CASE("a sector that cannot meet its commitments says so");
   Problem p;
@@ -516,6 +560,8 @@ int main() {
   testFillNothingAvailable();
   testAirtimeFairnessNotBandwidthFairness();
   testCommittedRatesReservedFirst();
+  testIdleSubscriberIsNotABreach();
+  testRealBreachIsCountedConsistently();
   testOversubscriptionIsReported();
   testNoFlapForMarginalGain();
   testHandoffForLargeGain();

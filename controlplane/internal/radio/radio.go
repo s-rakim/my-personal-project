@@ -72,6 +72,33 @@ func (p Point) ElevationAngleDeg(q Point) float64 {
 	return deg(math.Atan2(q.HeightM-p.HeightM, d))
 }
 
+// Destination returns the point reached by travelling distanceKm from p along
+// bearingDeg. Height is carried over unchanged.
+//
+// Needed wherever coverage is reasoned about forwards rather than backwards:
+// placing a test subscriber inside a sector's beam, walking a coverage arc, or
+// working out where a sector's edge actually falls on the ground.
+func (p Point) Destination(bearingDeg, distanceKm float64) Point {
+	lat1 := rad(p.Lat)
+	lon1 := rad(p.Lon)
+	theta := rad(bearingDeg)
+	delta := distanceKm / earthRadiusKm
+
+	sinLat2 := math.Sin(lat1)*math.Cos(delta) + math.Cos(lat1)*math.Sin(delta)*math.Cos(theta)
+	lat2 := math.Asin(math.Max(-1, math.Min(1, sinLat2)))
+	lon2 := lon1 + math.Atan2(
+		math.Sin(theta)*math.Sin(delta)*math.Cos(lat1),
+		math.Cos(delta)-math.Sin(lat1)*sinLat2,
+	)
+
+	return Point{
+		Lat: deg(lat2),
+		// Normalise into [-180, 180] so a point near the antimeridian stays valid.
+		Lon:     math.Mod(deg(lon2)+540, 360) - 180,
+		HeightM: p.HeightM,
+	}
+}
+
 // AngleDiffDeg is the absolute difference between two bearings, in [0, 180].
 func AngleDiffDeg(a, b float64) float64 {
 	d := math.Mod(math.Abs(a-b), 360)

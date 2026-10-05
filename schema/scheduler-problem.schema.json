@@ -4,7 +4,14 @@
   "title": "SchedulerProblem",
   "description": "One tick of work handed to the airtime solver. The control plane owns RF prediction and demand estimation; the solver owns nothing but the allocation decision, so it stays pure and testable.",
   "type": "object",
-  "required": ["epoch", "tick_seconds", "policy", "sites", "sectors", "terminals"],
+  "required": [
+    "epoch",
+    "tick_seconds",
+    "policy",
+    "sites",
+    "sectors",
+    "terminals"
+  ],
   "additionalProperties": false,
   "properties": {
     "epoch": {
@@ -12,7 +19,10 @@
       "minimum": 0,
       "description": "Monotonic tick counter. The control plane rejects a plan whose epoch does not match the problem it sent, which is how a slow solver run gets discarded instead of applied late."
     },
-    "generated_at": { "type": "string", "format": "date-time" },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
     "tick_seconds": {
       "type": "number",
       "exclusiveMinimum": 0,
@@ -20,7 +30,11 @@
     },
     "policy": {
       "type": "object",
-      "required": ["handoff_gain_threshold", "min_dwell_seconds", "stickiness"],
+      "required": [
+        "handoff_gain_threshold",
+        "min_dwell_seconds",
+        "stickiness"
+      ],
       "additionalProperties": false,
       "properties": {
         "handoff_gain_threshold": {
@@ -49,11 +63,20 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "backhaul_mbps"],
+        "required": [
+          "id",
+          "backhaul_mbps"
+        ],
         "additionalProperties": false,
         "properties": {
-          "id": { "type": "string", "minLength": 1 },
-          "backhaul_mbps": { "type": "number", "minimum": 0 },
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "backhaul_mbps": {
+            "type": "number",
+            "minimum": 0
+          },
           "parent_site_id": {
             "type": "string",
             "description": "Empty when the site reaches the PoP directly. Otherwise this site's traffic is also charged against the parent's backhaul, recursively."
@@ -61,6 +84,11 @@
           "backhaul_sector_id": {
             "type": "string",
             "description": "Set when this site relays over a parent sector's air interface rather than its own circuit. The relay then competes for airtime with that sector's subscribers."
+          },
+          "relay_achievable_mbps": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Capacity of the relay radio link itself, when this site relays over a parent sector. Without it the solver cannot tell that a 50 Mbps trunk is the real ceiling behind a 300 Mbps sector."
           }
         }
       }
@@ -69,18 +97,39 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "site_id", "airtime_budget"],
+        "required": [
+          "id",
+          "site_id",
+          "airtime_budget"
+        ],
         "additionalProperties": false,
         "properties": {
-          "id": { "type": "string", "minLength": 1 },
-          "site_id": { "type": "string", "minLength": 1 },
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "site_id": {
+            "type": "string",
+            "minLength": 1
+          },
           "airtime_budget": {
             "type": "number",
             "exclusiveMinimum": 0,
             "maximum": 1,
             "description": "Schedulable fraction of a second, after management overhead and a deliberate latency reserve."
           },
-          "max_terminals": { "type": "integer", "minimum": 0, "description": "0 means unlimited." }
+          "max_terminals": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "0 means unlimited."
+          },
+          "dl_ul_split": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "maximum": 1,
+            "default": 0.75,
+            "description": "Share of airtime given to the downlink. Time-division gear shares one pool between directions, so a sector cannot be busy downstream and idle upstream. Set 1.0 for frequency-division gear, which has an independent uplink pool."
+          }
         }
       }
     },
@@ -88,34 +137,96 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "priority", "demand_down_mbps", "demand_up_mbps", "ceiling_down_mbps", "ceiling_up_mbps", "candidates"],
+        "required": [
+          "id",
+          "priority",
+          "demand_down_mbps",
+          "demand_up_mbps",
+          "ceiling_down_mbps",
+          "ceiling_up_mbps",
+          "candidates"
+        ],
         "additionalProperties": false,
         "properties": {
-          "id": { "type": "string", "minLength": 1 },
-          "priority": { "type": "integer", "description": "Plan priority. Higher wins scarce airtime. Used as the weight in weighted max-min fairness." },
-          "demand_down_mbps": { "type": "number", "minimum": 0, "description": "Estimated offered load, not the plan ceiling. Allocating to ceilings wastes the whole network, since subscribers are idle most of the time." },
-          "demand_up_mbps": { "type": "number", "minimum": 0 },
-          "ceiling_down_mbps": { "type": "number", "minimum": 0 },
-          "ceiling_up_mbps": { "type": "number", "minimum": 0 },
-          "committed_down_mbps": { "type": "number", "minimum": 0, "default": 0 },
-          "committed_up_mbps": { "type": "number", "minimum": 0, "default": 0 },
-          "current_sector_id": { "type": "string", "description": "Empty for a terminal that is not yet associated." },
-          "dwell_seconds": { "type": "number", "minimum": 0, "description": "How long the terminal has held its current sector." },
-          "pinned_sector_id": { "type": "string", "description": "Operator override. Honoured unconditionally; the solver reports when the pin costs the subscriber their committed rate rather than silently overriding it." },
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "priority": {
+            "type": "integer",
+            "description": "Plan priority. Higher wins scarce airtime. Used as the weight in weighted max-min fairness."
+          },
+          "demand_down_mbps": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Estimated offered load, not the plan ceiling. Allocating to ceilings wastes the whole network, since subscribers are idle most of the time."
+          },
+          "demand_up_mbps": {
+            "type": "number",
+            "minimum": 0
+          },
+          "ceiling_down_mbps": {
+            "type": "number",
+            "minimum": 0
+          },
+          "ceiling_up_mbps": {
+            "type": "number",
+            "minimum": 0
+          },
+          "committed_down_mbps": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0
+          },
+          "committed_up_mbps": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0
+          },
+          "current_sector_id": {
+            "type": "string",
+            "description": "Empty for a terminal that is not yet associated."
+          },
+          "dwell_seconds": {
+            "type": "number",
+            "minimum": 0,
+            "description": "How long the terminal has held its current sector."
+          },
+          "pinned_sector_id": {
+            "type": "string",
+            "description": "Operator override. Honoured unconditionally; the solver reports when the pin costs the subscriber their committed rate rather than silently overriding it."
+          },
           "candidates": {
             "type": "array",
             "minItems": 0,
             "description": "Every sector this terminal could use, with the rate each would deliver. An empty list means the terminal is unserviceable this tick, which is an answer, not an error.",
             "items": {
               "type": "object",
-              "required": ["sector_id", "achievable_down_mbps", "achievable_up_mbps"],
+              "required": [
+                "sector_id",
+                "achievable_down_mbps",
+                "achievable_up_mbps"
+              ],
               "additionalProperties": false,
               "properties": {
-                "sector_id": { "type": "string", "minLength": 1 },
-                "achievable_down_mbps": { "type": "number", "minimum": 0 },
-                "achievable_up_mbps": { "type": "number", "minimum": 0 },
-                "sinr_db": { "type": "number" },
-                "mcs": { "type": "string" },
+                "sector_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "achievable_down_mbps": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "achievable_up_mbps": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "sinr_db": {
+                  "type": "number"
+                },
+                "mcs": {
+                  "type": "string"
+                },
                 "measured": {
                   "type": "boolean",
                   "default": false,
