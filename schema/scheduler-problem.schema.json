@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bswisp.net/schema/scheduler-problem.json",
+  "title": "SchedulerProblem",
+  "description": "One tick of work handed to the airtime solver. The control plane owns RF prediction and demand estimation; the solver owns nothing but the allocation decision, so it stays pure and testable.",
+  "type": "object",
+  "required": ["epoch", "tick_seconds", "policy", "sites", "sectors", "terminals"],
+  "additionalProperties": false,
+  "properties": {
+    "epoch": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Monotonic tick counter. The control plane rejects a plan whose epoch does not match the problem it sent, which is how a slow solver run gets discarded instead of applied late."
+    },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "tick_seconds": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Seconds this allocation is expected to hold. Starlink reassigns terminals on 15s boundaries; fixed towers can safely use longer."
+    },
+    "policy": {
+      "type": "object",
+      "required": ["handoff_gain_threshold", "min_dwell_seconds", "stickiness"],
+      "additionalProperties": false,
+      "properties": {
+        "handoff_gain_threshold": {
+          "type": "number",
+          "minimum": 1,
+          "description": "A terminal only moves when the new sector scores this multiple of its current one. 1.0 means move on any improvement, which produces flapping. 1.2 to 1.4 is sane."
+        },
+        "min_dwell_seconds": {
+          "type": "number",
+          "minimum": 0,
+          "description": "A terminal that has just moved is pinned for this long, even if something better appears. The second half of flap protection."
+        },
+        "stickiness": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Score bonus applied to a terminal's current sector, as a fraction. Expresses that a working link has value beyond its bitrate."
+        },
+        "reserve_committed_first": {
+          "type": "boolean",
+          "default": true,
+          "description": "Reserve every terminal's committed rate before distributing surplus. Turning this off makes the network faster on average and breaks the only promise you actually sold."
+        }
+      }
+    },
+    "sites": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "backhaul_mbps"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "backhaul_mbps": { "type": "number", "minimum": 0 },
+          "parent_site_id": {
+            "type": "string",
+            "description": "Empty when the site reaches the PoP directly. Otherwise this site's traffic is also charged against the parent's backhaul, recursively."
+          },
+          "backhaul_sector_id": {
+            "type": "string",
+            "description": "Set when this site relays over a parent sector's air interface rather than its own circuit. The relay then competes for airtime with that sector's subscribers."
+          }
+        }
+      }
+    },
+    "sectors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "site_id", "airtime_budget"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "site_id": { "type": "string", "minLength": 1 },
+          "airtime_budget": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "maximum": 1,
+            "description": "Schedulable fraction of a second, after management overhead and a deliberate latency reserve."
+          },
+          "max_terminals": { "type": "integer", "minimum": 0, "description": "0 means unlimited." }
+        }
+      }
+    },
+    "terminals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "priority", "demand_down_mbps", "demand_up_mbps", "ceiling_down_mbps", "ceiling_up_mbps", "candidates"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "priority": { "type": "integer", "description": "Plan priority. Higher wins scarce airtime. Used as the weight in weighted max-min fairness." },
+          "demand_down_mbps": { "type": "number", "minimum": 0, "description": "Estimated offered load, not the plan ceiling. Allocating to ceilings wastes the whole network, since subscribers are idle most of the time." },
+          "demand_up_mbps": { "type": "number", "minimum": 0 },
+          "ceiling_down_mbps": { "type": "number", "minimum": 0 },
+          "ceiling_up_mbps": { "type": "number", "minimum": 0 },
+          "committed_down_mbps": { "type": "number", "minimum": 0, "default": 0 },
+          "committed_up_mbps": { "type": "number", "minimum": 0, "default": 0 },
+          "current_sector_id": { "type": "string", "description": "Empty for a terminal that is not yet associated." },
+          "dwell_seconds": { "type": "number", "minimum": 0, "description": "How long the terminal has held its current sector." },
+          "pinned_sector_id": { "type": "string", "description": "Operator override. Honoured unconditionally; the solver reports when the pin costs the subscriber their committed rate rather than silently overriding it." },
+          "candidates": {
+            "type": "array",
+            "minItems": 0,
+            "description": "Every sector this terminal could use, with the rate each would deliver. An empty list means the terminal is unserviceable this tick, which is an answer, not an error.",
+            "items": {
+              "type": "object",
+              "required": ["sector_id", "achievable_down_mbps", "achievable_up_mbps"],
+              "additionalProperties": false,
+              "properties": {
+                "sector_id": { "type": "string", "minLength": 1 },
+                "achievable_down_mbps": { "type": "number", "minimum": 0 },
+                "achievable_up_mbps": { "type": "number", "minimum": 0 },
+                "sinr_db": { "type": "number" },
+                "mcs": { "type": "string" },
+                "measured": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "True when sinr_db came from the terminal's own report rather than the propagation model. Measured values are trusted over predictions, and the gap between them is how the model gets calibrated."
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

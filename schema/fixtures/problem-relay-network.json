@@ -1,0 +1,60 @@
+{
+  "epoch": 1041,
+  "generated_at": "2026-10-05T13:00:00Z",
+  "tick_seconds": 15,
+  "policy": {
+    "handoff_gain_threshold": 1.25,
+    "min_dwell_seconds": 60,
+    "stickiness": 0.15,
+    "reserve_committed_first": true
+  },
+  "sites": [
+    { "id": "pop-ridge", "backhaul_mbps": 1000 },
+    { "id": "relay-mill", "backhaul_mbps": 400, "parent_site_id": "pop-ridge",
+      "backhaul_sector_id": "ridge-n", "relay_achievable_mbps": 180 }
+  ],
+  "sectors": [
+    { "id": "ridge-n", "site_id": "pop-ridge", "airtime_budget": 0.85, "dl_ul_split": 0.75, "max_terminals": 60 },
+    { "id": "ridge-s", "site_id": "pop-ridge", "airtime_budget": 0.85, "dl_ul_split": 0.75, "max_terminals": 60 },
+    { "id": "mill-e",  "site_id": "relay-mill", "airtime_budget": 0.85, "dl_ul_split": 0.75, "max_terminals": 40 }
+  ],
+  "terminals": [
+    { "id": "cpe-0001", "priority": 3, "demand_down_mbps": 85, "demand_up_mbps": 9,
+      "ceiling_down_mbps": 200, "ceiling_up_mbps": 20, "committed_down_mbps": 25, "committed_up_mbps": 5,
+      "current_sector_id": "ridge-n", "dwell_seconds": 2400,
+      "candidates": [
+        { "sector_id": "ridge-n", "achievable_down_mbps": 220, "achievable_up_mbps": 110, "sinr_db": 27.4, "mcs": "256QAM 5/6", "measured": true },
+        { "sector_id": "ridge-s", "achievable_down_mbps": 90,  "achievable_up_mbps": 45,  "sinr_db": 16.1, "mcs": "16QAM 3/4" }
+      ] },
+    { "id": "cpe-0002", "priority": 1, "demand_down_mbps": 60, "demand_up_mbps": 6,
+      "ceiling_down_mbps": 100, "ceiling_up_mbps": 10, "committed_down_mbps": 10, "committed_up_mbps": 2,
+      "current_sector_id": "ridge-n", "dwell_seconds": 900,
+      "candidates": [
+        { "sector_id": "ridge-n", "achievable_down_mbps": 38, "achievable_up_mbps": 19, "sinr_db": 11.8, "mcs": "16QAM 1/2", "measured": true }
+      ] },
+    { "id": "cpe-0003", "priority": 1, "demand_down_mbps": 120, "demand_up_mbps": 12,
+      "ceiling_down_mbps": 100, "ceiling_up_mbps": 10, "committed_down_mbps": 10, "committed_up_mbps": 2,
+      "current_sector_id": "", "dwell_seconds": 0,
+      "candidates": [
+        { "sector_id": "ridge-s", "achievable_down_mbps": 310, "achievable_up_mbps": 155, "sinr_db": 31.9, "mcs": "1024QAM 3/4", "measured": true }
+      ] },
+    { "id": "cpe-0004", "priority": 1, "demand_down_mbps": 95, "demand_up_mbps": 10,
+      "ceiling_down_mbps": 100, "ceiling_up_mbps": 10, "committed_down_mbps": 10, "committed_up_mbps": 2,
+      "current_sector_id": "mill-e", "dwell_seconds": 7200,
+      "candidates": [
+        { "sector_id": "mill-e", "achievable_down_mbps": 150, "achievable_up_mbps": 75, "sinr_db": 24.0, "mcs": "64QAM 5/6", "measured": true }
+      ] },
+    { "id": "cpe-0005", "priority": 1, "demand_down_mbps": 140, "demand_up_mbps": 14,
+      "ceiling_down_mbps": 200, "ceiling_up_mbps": 20, "committed_down_mbps": 10, "committed_up_mbps": 2,
+      "current_sector_id": "mill-e", "dwell_seconds": 7200,
+      "candidates": [
+        { "sector_id": "mill-e", "achievable_down_mbps": 95, "achievable_up_mbps": 47, "sinr_db": 20.2, "mcs": "64QAM 3/4", "measured": true }
+      ] },
+    { "id": "cpe-0006", "priority": 1, "demand_down_mbps": 40, "demand_up_mbps": 4,
+      "ceiling_down_mbps": 50, "ceiling_up_mbps": 5, "committed_down_mbps": 5, "committed_up_mbps": 1,
+      "current_sector_id": "mill-e", "dwell_seconds": 30,
+      "candidates": [
+        { "sector_id": "mill-e", "achievable_down_mbps": 22, "achievable_up_mbps": 11, "sinr_db": 9.2, "mcs": "QPSK 3/4", "measured": true }
+      ] }
+  ]
+}
