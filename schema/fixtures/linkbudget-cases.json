@@ -1,0 +1,150 @@
+{
+  "_comment": "Link budget conformance cases. Go (controlplane/internal/radio) and Python (planning/bsplan/linkbudget.py) must both reproduce every expected value to within 1e-6. A planning tool that disagrees with the live scheduler is worse than none, because it produces confident numbers the network will not honour.",
+  "tolerance": 1e-06,
+  "cases": [
+    {
+      "name": "short urban 5.8GHz 40MHz",
+      "input": {
+        "tx_power_dbm": 25,
+        "tx_gain_dbi": 17,
+        "rx_gain_dbi": 19,
+        "freq_mhz": 5775,
+        "channel_width_mhz": 40,
+        "distance_km": 1.2,
+        "noise_figure_db": 6,
+        "feeder_loss_db": 2.0,
+        "clutter_loss_db": 8,
+        "fade_margin_db": 10,
+        "interference_dbm": -92
+      },
+      "expect": {
+        "eirp_dbm": 41.0,
+        "rx_power_dbm": -58.254665,
+        "sinr_db": 20.724723,
+        "mcs": "64QAM 3/4",
+        "achievable_mbps": 135.0,
+        "airtime_for_10mbps": 0.074074
+      }
+    },
+    {
+      "name": "long rural clear LOS",
+      "input": {
+        "tx_power_dbm": 25,
+        "tx_gain_dbi": 17,
+        "rx_gain_dbi": 24,
+        "freq_mhz": 5500,
+        "channel_width_mhz": 40,
+        "distance_km": 12.0,
+        "noise_figure_db": 5,
+        "feeder_loss_db": 1.5,
+        "clutter_loss_db": 0,
+        "fade_margin_db": 10,
+        "interference_dbm": -200
+      },
+      "expect": {
+        "eirp_dbm": 41.25,
+        "rx_power_dbm": -64.330879,
+        "sinr_db": 18.648521,
+        "mcs": "64QAM 2/3",
+        "achievable_mbps": 120.0,
+        "airtime_for_10mbps": 0.083333
+      }
+    },
+    {
+      "name": "60GHz short haul",
+      "input": {
+        "tx_power_dbm": 10,
+        "tx_gain_dbi": 38,
+        "rx_gain_dbi": 38,
+        "freq_mhz": 60480,
+        "channel_width_mhz": 2160,
+        "distance_km": 0.5,
+        "noise_figure_db": 8,
+        "feeder_loss_db": 0.5,
+        "clutter_loss_db": 2,
+        "fade_margin_db": 15,
+        "interference_dbm": -200
+      },
+      "expect": {
+        "eirp_dbm": 47.75,
+        "rx_power_dbm": -38.551636,
+        "sinr_db": 19.103827,
+        "mcs": "64QAM 2/3",
+        "achievable_mbps": 6480.0,
+        "airtime_for_10mbps": 0.001543
+      }
+    },
+    {
+      "name": "heavy interference, link fails",
+      "input": {
+        "tx_power_dbm": 20,
+        "tx_gain_dbi": 15,
+        "rx_gain_dbi": 16,
+        "freq_mhz": 5775,
+        "channel_width_mhz": 20,
+        "distance_km": 8.0,
+        "noise_figure_db": 7,
+        "feeder_loss_db": 2.0,
+        "clutter_loss_db": 18,
+        "fade_margin_db": 10,
+        "interference_dbm": -70
+      },
+      "expect": {
+        "eirp_dbm": 34.0,
+        "rx_power_dbm": -94.73284,
+        "sinr_db": -34.750136,
+        "mcs": "",
+        "achievable_mbps": 0.0,
+        "airtime_for_10mbps": null
+      }
+    },
+    {
+      "name": "900MHz NLOS",
+      "input": {
+        "tx_power_dbm": 27,
+        "tx_gain_dbi": 10,
+        "rx_gain_dbi": 8,
+        "freq_mhz": 915,
+        "channel_width_mhz": 10,
+        "distance_km": 6.0,
+        "noise_figure_db": 6,
+        "feeder_loss_db": 1.0,
+        "clutter_loss_db": 22,
+        "fade_margin_db": 10,
+        "interference_dbm": -100
+      },
+      "expect": {
+        "eirp_dbm": 36.5,
+        "rx_power_dbm": -85.231447,
+        "sinr_db": 0.644127,
+        "mcs": "",
+        "achievable_mbps": 0.0,
+        "airtime_for_10mbps": null
+      }
+    },
+    {
+      "name": "uplink, low CPE power",
+      "input": {
+        "tx_power_dbm": 23,
+        "tx_gain_dbi": 19,
+        "rx_gain_dbi": 17,
+        "freq_mhz": 5775,
+        "channel_width_mhz": 40,
+        "distance_km": 3.5,
+        "noise_figure_db": 6,
+        "feeder_loss_db": 2.0,
+        "clutter_loss_db": 10,
+        "fade_margin_db": 10,
+        "interference_dbm": -95
+      },
+      "expect": {
+        "eirp_dbm": 41.0,
+        "rx_power_dbm": -71.552401,
+        "sinr_db": 8.669517,
+        "mcs": "QPSK 3/4",
+        "achievable_mbps": 45.0,
+        "airtime_for_10mbps": 0.222222
+      }
+    }
+  ]
+}
