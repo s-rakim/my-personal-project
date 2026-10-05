@@ -1,0 +1,53 @@
+{
+  "node_id": "pop-ridge",
+  "data_dir": "var",
+
+  "scheduler": {
+    "solver_path": "scheduler/build/bswisp-solver",
+    "tick_seconds": 15,
+    "solver_timeout_seconds": 5,
+    "handoff_gain_threshold": 1.25,
+    "min_dwell_seconds": 60,
+    "stickiness": 0.15,
+    "reserve_committed_first": true
+  },
+
+  "ipam": {
+    "cgnat_pool": "100.64.0.0/10",
+    "ipv6_pool": "2001:db8::/32",
+    "ipv6_delegation_bits": 56
+  },
+
+  "radius": {
+    "enabled": false,
+    "auth_listen": ":1812",
+    "acct_listen": ":1813",
+    "clients": [],
+    "session_timeout_seconds": 3600,
+    "interim_interval_seconds": 300
+  },
+
+  "api": {
+    "listen": "127.0.0.1:8080",
+    "admin_token": "",
+    "tls_cert_file": "",
+    "tls_key_file": ""
+  },
+
+  "dataplane": {
+    "backend": "dryrun",
+    "apply": false,
+    "wan_interface": "eth0",
+    "access_interface": "eth1",
+    "nft_table": "bswisp",
+    "public_ipv4": "198.51.100.1"
+  },
+
+  "radio": {
+    "noise_figure_db": 6,
+    "protocol_efficiency": 0.75,
+    "default_demand_mbps": 8,
+    "demand_half_life_seconds": 120,
+    "telemetry_stale_seconds": 180
+  }
+}
