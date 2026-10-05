@@ -65,10 +65,47 @@ spectrum is licensed to carriers. Your options:
 | 60 GHz | none | short multi-gigabit hops, rain-sensitive |
 | 11/18/23 GHz | licensed | protected backhaul trunks |
 
-**3. Tower leases.** $200–1,500/month per site depending on height and owner.
-Negotiate before buying radios for a site you have not secured.
+**3. You cannot relay through someone else's boosters or repeaters.** This comes
+up often enough to be worth stating flatly, because it is an appealing idea and it
+fails for two independent reasons.
 
-**4. Insurance and an entity.** Liability on tower work, and errors-and-omissions
+A cellular signal booster, also called a bidirectional amplifier, is a donor
+antenna, a low-noise amplifier, a duplexer, and a service antenna. That is the
+whole device. It has no baseband processor, no IP stack and no routing table, so
+there is no interface through which your traffic could enter it. It amplifies RF
+inside specific licensed bands and does nothing else. This is not a configuration
+you have not found; there is nothing there to configure.
+
+Separately, those bands belong to carriers. In the US, consumer boosters must be
+registered with the carrier and operate only with its consent (FCC Part 20.21),
+and carriers run interference-hunting teams because unauthorised transmissions
+degrade service they are selling. The same holds for a carrier's tower equipment,
+a building's distributed antenna system, and a neighbour's Wi-Fi extender: none of
+them will carry your packets, and none of them are yours to transmit through.
+
+What people usually mean when they say this, and what each actually requires:
+
+| What you meant | What it really is | How to model it |
+|---|---|---|
+| "Put my radios on that existing tall thing" | Space on a structure: water tower, grain silo, church steeple, rooftop, existing comms tower | `backhaul_kind: "relay"` or `"ptp"` |
+| "Use the cellular network as my uplink" | A SIM modem at the site; you are the carrier's customer | `backhaul_kind: "cellular"` |
+| "Put up my own repeaters between towers" | Your own relay radios, which is the architecture this repo is built around | `backhaul_kind: "relay"` |
+
+All three are supported and two of them are good ideas. The thing that does not
+exist is injecting your traffic into infrastructure someone else operates.
+
+The useful news: **you need permission for vertical space, not cooperation from a
+carrier.** A grain silo owner or a church with a steeple will often rent you a
+mounting point for a fraction of a commercial tower lease, and a 25 m structure
+with clear line of sight beats a 60 m one behind a ridge. `bsplan link` will tell
+you whether a candidate structure actually reaches your subscribers before you
+negotiate for it.
+
+**4. Tower leases.** $200–1,500/month per site on a commercial tower, often far
+less on a water tower, silo or rooftop. Negotiate before buying radios for a site
+you have not secured.
+
+**5. Insurance and an entity.** Liability on tower work, and errors-and-omissions
 if you are signing service agreements. Non-negotiable before the first customer.
 
 ---

@@ -88,6 +88,15 @@ not control. Good first uplink, good failover, questionable permanent trunk.
 
 A real network ends up with both, which is why backhaul kind is per-site.
 
+**Reading C — relaying through existing boosters.** This one is not an
+architecture, it is a misunderstanding worth naming because it sounds plausible.
+A cellular booster is an RF amplifier with no baseband and no IP stack, so there
+is no way to hand it a packet, and the bands it amplifies are licensed to a
+carrier in any case. The same applies to carrier tower equipment and to building
+distributed antenna systems. See `docs/hardware.md` for the detail; the short
+version is that you mount your own radios on existing structures rather than
+transmitting through equipment somebody else operates.
+
 ## Spectrum, before you transmit anything
 
 The control plane does not care which band you use, but the law does, and this is
