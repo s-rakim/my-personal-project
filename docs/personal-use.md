@@ -152,6 +152,35 @@ If you want connectivity in a moving vehicle, the options are:
 | Cellular modem | wherever there is coverage | the normal answer, and the right one |
 | Starlink Roam | anywhere with sky | a phased array that re-aims electronically, which is how it tracks satellites while moving — the same aiming problem, solved in hardware |
 
+### Getting your home connection into the car
+
+What people usually want from "relay my connection to the car" is not radio at
+all. It is their home network: their own address, their own DNS, their own
+devices reachable. That is a tunnel, not a link.
+
+```
+car: router ──5G─▶ carrier ──internet─▶ home router ─▶ your fibre
+              └──── WireGuard tunnel, end to end ────┘
+```
+
+Cellular carries the packets, because you are the carrier's customer and that is
+a service you can buy. The tunnel makes the car behave as though it were plugged
+in at home. No part of this involves transmitting on anyone else's spectrum.
+
+A GL.iNet travel router does this out of the box; WireGuard is a configuration
+page in its firmware. Watch the throughput ceiling, which is the router's CPU
+rather than the cellular link: the entry-level Mango (GL-MT300N-V2) manages about
+20 Mbps encrypted because its MIPS chip has no crypto acceleration, while a
+Beryl AX manages roughly 200. For maps, browsing and streaming the cheap one is
+fine.
+
+What this cannot do is push your home bandwidth through a cell tower. The
+carrier's network carries its own subscribers' traffic; there is no side door to
+inject yours. You are buying transport from them and tunnelling over it, which is
+a different thing and the only one that works.
+
+### Range of a vehicle-mounted radio
+
 The omni figures assume clear line of sight the whole way. In practice a house or
 a hill between you and home ends the link, so treat the 1.5 km as an upper bound
 for a flat open area rather than a usable service radius.
