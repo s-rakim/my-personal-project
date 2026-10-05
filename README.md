@@ -94,6 +94,7 @@ fairness behaviour before any hardware exists.
 | Doc | What it covers |
 |---|---|
 | [`docs/personal-use.md`](docs/personal-use.md) | **Start here if this is for your own buildings** — most of this repo is overkill for that |
+| [`docs/setup-car.md`](docs/setup-car.md) | Step-by-step: home internet in a vehicle, over a tunnel |
 | [`docs/hardware.md`](docs/hardware.md) | What to buy, in what order, and why spectrum binds before fibre |
 | [`docs/off-the-shelf.md`](docs/off-the-shelf.md) | What to adopt instead of writing — OpenWrt, OpenWISP, BIRD — and where this fits above them |
 | [`schema/README.md`](schema/README.md) | The wire contracts and the rules for changing them |
