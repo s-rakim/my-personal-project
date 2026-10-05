@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("bswisp-noc")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4b6cc6f51ddf5016cfa9cb998f0b00ef11b43d17")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+79c634210c0fca494e30720d6edba2cef977867b")]
 [assembly: System.Reflection.AssemblyProductAttribute("bswisp-noc")]
 [assembly: System.Reflection.AssemblyTitleAttribute("bswisp-noc")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
