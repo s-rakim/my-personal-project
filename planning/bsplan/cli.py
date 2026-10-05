@@ -9,12 +9,14 @@
 from __future__ import annotations
 
 import argparse
+import math
 import sys
 from pathlib import Path
 
 from . import __version__
 from .capacity import DemandProfile, network_capacity, range_for_rate_km, sector_capacity
-from .geo import Point, angle_diff_deg, fresnel_clearance_m
+from .geo import (Point, angle_diff_deg, earth_bulge_m, fresnel_clearance_m,
+                  radio_horizon_km, required_mast_height_m)
 from .inventory import Inventory, Sector, load
 from .linkbudget import LinkBudget, select_mcs
 
@@ -215,6 +217,119 @@ def _beam_check(sector: Sector, bearing: float, elevation: float) -> list[str]:
     return reasons
 
 
+# Radios people actually buy for a point-to-point hop: gain in dBi, conducted
+# power in dBm, and the half-power beamwidth that decides how precisely each end
+# has to be aimed.
+PTP_RADIOS: dict[str, tuple[float, float, float]] = {
+    "litebeam-5ac":  (23.0, 25.0, 10.0),
+    "nanobeam-5ac":  (19.0, 25.0, 12.0),
+    "powerbeam-5ac": (25.0, 25.0,  8.0),
+    "powerbeam-500": (27.0, 25.0,  7.0),
+    "powerbeam-620": (29.0, 25.0,  5.0),
+    "wave-nano-60g": (36.0, 10.0,  3.0),
+}
+
+
+def cmd_ptp(args: argparse.Namespace) -> int:
+    """Plan one point-to-point link.
+
+    Answers the question in the order it actually binds: can the two ends see
+    each other, is there room for the Fresnel zone, and only then how fast the
+    radios will run. People reach for the last one first and are then surprised
+    by the planet.
+    """
+    if args.radio not in PTP_RADIOS:
+        print(f"bsplan: unknown radio {args.radio!r}. Known: "
+              f"{', '.join(sorted(PTP_RADIOS))}", file=sys.stderr)
+        return 1
+
+    gain, tx_power, beamwidth = PTP_RADIOS[args.radio]
+    freq = 60480.0 if "60g" in args.radio else args.freq
+    distance = args.distance
+
+    print(f"{args.radio} pair at {freq:.0f} MHz, {args.channel:.0f} MHz channel, "
+          f"{distance:.2f} km")
+    print(f"  antenna {gain:.0f} dBi, {beamwidth:.0f}° beamwidth, "
+          f"{tx_power:.0f} dBm conducted")
+    print()
+
+    # 1. Can they see each other at all?
+    horizon = radio_horizon_km(args.mast_a, args.mast_b)
+    bulge = earth_bulge_m(distance)
+    fresnel = fresnel_clearance_m(distance, freq)
+    needed = required_mast_height_m(distance, freq, args.obstacles)
+
+    print("  GEOMETRY")
+    print(f"    radio horizon at {args.mast_a:.0f} m and {args.mast_b:.0f} m masts"
+          f"       {horizon:>8.1f} km")
+    print(f"    earth bulge at the midpoint                   {bulge:>8.1f} m")
+    print(f"    Fresnel radius needing clearance              {fresnel:>8.1f} m")
+    if args.obstacles > 0:
+        print(f"    obstacles along the path                      {args.obstacles:>8.1f} m")
+    print(f"    mast height both ends need (flat ground)      {needed:>8.1f} m")
+
+    geometry_ok = True
+    if distance > horizon:
+        geometry_ok = False
+        print()
+        print(f"    BLOCKED: {distance:.1f} km is past the {horizon:.1f} km horizon for "
+              f"these mast heights.")
+        print(f"             No radio reaches it; the earth is in the way. Raise a mast "
+              f"or find a hilltop.")
+    elif min(args.mast_a, args.mast_b) < needed:
+        geometry_ok = False
+        print()
+        print(f"    OBSTRUCTED: masts are {min(args.mast_a, args.mast_b):.0f} m but the "
+              f"path needs {needed:.1f} m at both ends.")
+        print(f"                The link may still pass traffic, degraded and unreliable, "
+              f"since partial")
+        print(f"                Fresnel intrusion costs signal rather than killing it "
+              f"outright.")
+
+    # 2. What will it actually run at?
+    budget = LinkBudget(
+        tx_power_dbm=tx_power, tx_gain_dbi=gain, rx_gain_dbi=gain,
+        freq_mhz=freq, channel_width_mhz=args.channel, distance_km=distance,
+        noise_figure_db=6, feeder_loss_db=0.5,
+        clutter_loss_db=args.clutter, fade_margin_db=args.fade,
+        interference_dbm=args.interference,
+    )
+    sinr = budget.sinr_db()
+    mcs = select_mcs(sinr)
+    rate_mbps = budget.achievable_mbps()
+
+    print()
+    print("  LINK BUDGET")
+    print(f"    EIRP                                          {budget.eirp_dbm():>8.1f} dBm")
+    print(f"    received power                                 {budget.rx_power_dbm():>8.1f} dBm")
+    print(f"    SINR after a {args.fade:.0f} dB fade margin                    {sinr:>8.1f} dB")
+    print(f"    modulation                              {(mcs.name if mcs else '-- no link --'):>16}")
+    print(f"    throughput                                    {rate_mbps:>8.0f} Mbps")
+
+    # 3. How precisely must it be aimed?
+    beam_width_m = 2 * distance * 1000 * math.tan(math.radians(beamwidth / 2))
+    print()
+    print("  AIMING")
+    print(f"    beam is {beam_width_m:>6.0f} m wide at the far end; "
+          f"{beamwidth / 2:.1f}° of error halves the signal")
+
+    print()
+    if not geometry_ok:
+        print("  VERDICT: geometry blocks this link before the radios matter.")
+        return 1
+    if rate_mbps <= 0:
+        print("  VERDICT: path is clear but the link does not close. Bigger antennas, "
+              "a narrower channel, or a shorter hop.")
+        return 1
+    print(f"  VERDICT: workable at about {rate_mbps:.0f} Mbps, given a genuinely clear path.")
+    if args.interference <= -150:
+        print("           Assumes a quiet band. Scan the channel before committing: in "
+              "unlicensed")
+        print("           spectrum a neighbour on your frequency costs more range than "
+              "distance does.")
+    return 0
+
+
 def cmd_check(args: argparse.Namespace) -> int:
     """Check the inventory against physics and against its own geometry."""
     inv = _load(args.inventory)
@@ -353,6 +468,23 @@ def main(argv: list[str] | None = None) -> int:
     lnk.add_argument("--height", type=float, default=6.0,
                      help="subscriber antenna height in metres (default: 6)")
     lnk.set_defaults(func=cmd_link)
+
+    ptp = sub.add_parser("ptp", help="plan one point-to-point link between two masts")
+    ptp.add_argument("--distance", type=float, required=True, help="path length in km")
+    ptp.add_argument("--radio", default="litebeam-5ac",
+                     help=f"one of: {', '.join(sorted(PTP_RADIOS))}")
+    ptp.add_argument("--mast-a", type=float, default=6.0, help="antenna height, end A (m)")
+    ptp.add_argument("--mast-b", type=float, default=6.0, help="antenna height, end B (m)")
+    ptp.add_argument("--obstacles", type=float, default=0.0,
+                     help="height of trees or buildings along the path (m)")
+    ptp.add_argument("--freq", type=float, default=5775.0, help="MHz")
+    ptp.add_argument("--channel", type=float, default=40.0, help="channel width in MHz")
+    ptp.add_argument("--clutter", type=float, default=0.0,
+                     help="excess path loss over free space (dB); 0 is a clean LOS")
+    ptp.add_argument("--fade", type=float, default=10.0, help="fade margin in dB")
+    ptp.add_argument("--interference", type=float, default=-200.0,
+                     help="measured co-channel floor in dBm; -200 assumes a quiet band")
+    ptp.set_defaults(func=cmd_ptp)
 
     chk = sub.add_parser("check", help="validate inventory against physics and geometry")
     chk.set_defaults(func=cmd_check)

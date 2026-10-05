@@ -83,6 +83,88 @@ existing network will serve you better than anything here.
 
 ---
 
+## How far will a link actually go
+
+Run it rather than trusting a spec sheet:
+
+```sh
+cd planning
+python3 -m bsplan ptp --distance 5 --mast-a 6 --mast-b 6 --obstacles 15
+```
+
+The ordering of that output is the point. **The radio is almost never what limits
+a link; the planet and the trees are.** A LiteBeam pair has enough link budget for
+tens of kilometres, but two 6 m masts can only see 20 km of smooth earth, and the
+Fresnel zone needs real clearance above everything in between.
+
+Over flat ground, before a single tree:
+
+| Path | Earth bulge at midpoint | Mast height needed, both ends |
+|---|---|---|
+| 1 km | 0.0 m | 2.2 m |
+| 5 km | 0.4 m | 5.2 m |
+| 10 km | 1.5 m | 8.3 m |
+| 20 km | 5.9 m | 15.6 m |
+| 30 km | 13.2 m | 25.1 m |
+
+Add the height of whatever stands in the path. A 15 m treeline halfway along a
+5 km hop turns a 5.2 m requirement into 20 m, which is the difference between a
+roof mount and a tower.
+
+In exchange, what you get when the path *is* clear (LiteBeam pair, 40 MHz, quiet
+band):
+
+| Distance | Modulation | Throughput |
+|---|---|---|
+| 1 km | 1024QAM 5/6 | 250 Mbps |
+| 5 km | 256QAM 5/6 | 200 Mbps |
+| 12 km | 64QAM 5/6 | 150 Mbps |
+| 20 km | 64QAM 2/3 | 120 Mbps |
+| 30 km | 16QAM 3/4 | 90 Mbps |
+
+So: a few kilometres is comfortable from a rooftop, ten is a real project, and
+past twenty you are building towers or finding hills.
+
+---
+
+## Vehicles
+
+Two different questions hide in "can I put this on my car", and they have
+opposite answers.
+
+**Parked: yes, and it works well.** Mount a radio on a telescoping mast or a
+tripod, aim it when you arrive, and you have a real link. This is how people get
+usable bandwidth at a cabin or a work site. Aiming takes a few minutes with a
+compass and the radio's own signal meter.
+
+**Moving: no, and not because of the software.** These antennas earn their range
+by being narrow. A LiteBeam's beam is about 10 degrees wide, so **five degrees of
+heading change halves the signal.** A car changes heading by five degrees
+constantly, and at 1 km the beam is only 175 m across. The gain that gives you
+20 km is exactly what makes the link unusable in motion. A higher-gain dish is
+worse, not better: a PowerBeam 620 tolerates 2.5 degrees.
+
+If you want connectivity in a moving vehicle, the options are:
+
+| Approach | Realistic range | Notes |
+|---|---|---|
+| Omni on the car, sector at home | ~1.5 km at 100 Mbps, ~6.5 km at 25 Mbps | needs line of sight, and buildings end it |
+| Cellular modem | wherever there is coverage | the normal answer, and the right one |
+| Starlink Roam | anywhere with sky | a phased array that re-aims electronically, which is how it tracks satellites while moving — the same aiming problem, solved in hardware |
+
+The omni figures assume clear line of sight the whole way. In practice a house or
+a hill between you and home ends the link, so treat the 1.5 km as an upper bound
+for a flat open area rather than a usable service radius.
+
+Two physical cautions if you do mount anything on a vehicle. A mast on a moving
+car meets overhead power lines and low bridges, which is a well-known way to be
+killed rather than merely inconvenienced; use a mast that folds and make lowering
+it part of driving off. And a high-gain dish is a real RF emitter: a LiteBeam pair
+radiates about 48 dBm EIRP, which puts the exposure limit around 70 cm from the
+dish, so do not aim one into the cabin or at where people sit.
+
+---
+
 ## What still applies regardless
 
 Three things do not care whether you are commercial.

@@ -79,6 +79,68 @@ def angle_diff_deg(a: float, b: float) -> float:
     return 360 - d if d > 180 else d
 
 
+#: Effective-earth factor. Atmospheric refraction bends radio waves slightly
+#: downward, so they follow a path flatter than the true curvature. Treating the
+#: earth as 4/3 its real radius accounts for it, and is the standard assumption
+#: in temperate climates. Over water or in ducting conditions it varies, which is
+#: one more reason to keep a fade margin.
+K_FACTOR = 4.0 / 3.0
+
+
+def earth_bulge_m(distance_km: float, position: float = 0.5) -> float:
+    """Height the earth rises above the straight chord between two points.
+
+    This is the thing that ends long links, and it is invisible on a map. Two
+    antennas can be in clear line of sight on paper and still have a hill of
+    water in the way: over 20 km of flat ground the earth bulges about 31 m at
+    the midpoint, so both masts must clear that before any Fresnel clearance is
+    even considered.
+
+    position is where along the path to measure, 0 to 1; the bulge is largest at
+    the midpoint.
+    """
+    if distance_km <= 0:
+        return 0.0
+    d1 = distance_km * position
+    d2 = distance_km * (1 - position)
+    # d1*d2 / (2 * k * R), with distances in km and the result in metres.
+    return (d1 * d2 * 1000.0) / (2 * K_FACTOR * EARTH_RADIUS_KM)
+
+
+def radio_horizon_km(height_a_m: float, height_b_m: float) -> float:
+    """Furthest the two antennas can see each other over a smooth earth.
+
+    No radio reaches past this, whatever its link budget says, because the planet
+    is in the way. A 30 km path needs masts tall enough to see 30 km, and that is
+    usually the binding constraint rather than transmit power.
+    """
+    a = max(0.0, height_a_m)
+    b = max(0.0, height_b_m)
+    # sqrt(2 * k * R * h), reduced to the familiar 4.12*sqrt(h) for k = 4/3.
+    return 4.12 * (math.sqrt(a) + math.sqrt(b))
+
+
+def required_mast_height_m(distance_km: float, freq_mhz: float,
+                           obstacle_height_m: float = 0.0,
+                           fraction: float = 0.6) -> float:
+    """Mast height both ends need for a clear path over flat ground.
+
+    Adds the earth's bulge at the midpoint to the Fresnel radius there, plus
+    anything standing in the way. Assumes a symmetric link over level terrain,
+    which is the pessimistic case: real terrain with a rise in the middle needs
+    more, and a path across a valley needs much less.
+
+    The result is usually the number that decides whether a link is possible at
+    all. A 10 km hop over flat ground needs roughly 15 m at each end before a
+    single tree is accounted for.
+    """
+    if distance_km <= 0:
+        return max(0.0, obstacle_height_m)
+    return (earth_bulge_m(distance_km)
+            + fresnel_clearance_m(distance_km, freq_mhz, fraction)
+            + max(0.0, obstacle_height_m))
+
+
 def fresnel_clearance_m(distance_km: float, freq_mhz: float, fraction: float = 0.6) -> float:
     """Radius of the Fresnel zone at the midpoint of a path, in metres.
 
