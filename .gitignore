@@ -7,3 +7,5 @@ termsim
 oss/build/
 mobile/var/
 cache/var/
+noc/bin/
+noc/obj/

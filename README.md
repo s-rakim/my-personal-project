@@ -95,6 +95,8 @@ fairness behaviour before any hardware exists.
 |---|---|
 | [`docs/personal-use.md`](docs/personal-use.md) | **Start here if this is for your own buildings** — most of this repo is overkill for that |
 | [`docs/setup-car.md`](docs/setup-car.md) | Step-by-step: home internet in a vehicle, over a tunnel |
+| [`docs/schema-private-cellular.md`](docs/schema-private-cellular.md) | Build your own legal cellular bubble (CBRS) — hardware schema |
+| [`docs/schema-corridor.md`](docs/schema-corridor.md) | Build your own radio corridor home-to-car — hardware schema |
 | [`docs/hardware.md`](docs/hardware.md) | What to buy, in what order, and why spectrum binds before fibre |
 | [`docs/off-the-shelf.md`](docs/off-the-shelf.md) | What to adopt instead of writing — OpenWrt, OpenWISP, BIRD — and where this fits above them |
 | [`schema/README.md`](schema/README.md) | The wire contracts and the rules for changing them |

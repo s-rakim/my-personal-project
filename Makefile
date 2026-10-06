@@ -92,11 +92,15 @@ test-noc: noc
 
 # ---- Go multi-link manager (vehicle / remote site) ----
 
-mobile: $(BIN)/mobilelinkd
+mobile: $(BIN)/mobilelinkd $(BIN)/usagewatch
 
 $(BIN)/mobilelinkd: $(shell find mobile -name '*.go' 2>/dev/null)
 	@mkdir -p $(BIN)
 	cd mobile && go build -o ../$(BIN)/mobilelinkd ./cmd/mobilelinkd
+
+$(BIN)/usagewatch: $(shell find mobile -name '*.go' 2>/dev/null)
+	@mkdir -p $(BIN)
+	cd mobile && go build -o ../$(BIN)/usagewatch ./cmd/usagewatch
 
 test-mobile:
 	cd mobile && go vet ./... && go test ./...

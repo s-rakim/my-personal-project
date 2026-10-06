@@ -94,6 +94,26 @@ rather than paying to attempt it on every link that comes up.
 `GET /v1/status` shows every link's measured state, the decision for each class
 with its reasoning, and the queue.
 
+## usagewatch
+
+A companion that answers the bundle question with a number instead of a guess.
+It samples per-interface byte counters over days, separates metered from free
+traffic and deferrable from live, projects a month, and recommends the smallest
+plan that covers you — with and without pre-staging.
+
+```sh
+# watch for a fortnight, saving samples so a reboot does not lose them
+usagewatch --metered wwan0 --interval 5m --out usage.jsonl
+
+# or analyse what you already collected
+usagewatch --analyse usage.jsonl
+```
+
+It handles the things that make naive counter-watching wrong: cumulative
+counters, mid-run reboots that reset them, and free-link traffic that must never
+count toward a metered bundle. The projection is hedged by how long it watched,
+because an hour of data is a guess and a fortnight catches the weekly cycle.
+
 ## What this is not
 
 This is not novel. Multi-access steering is standardised as **3GPP ATSSS**
